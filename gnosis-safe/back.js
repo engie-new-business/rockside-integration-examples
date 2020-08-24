@@ -88,92 +88,6 @@ async function deployGnosisSafe(req, res) {
   })
 }
 
-async function prepareGnosisTransact(req, res) {
-  const privateKey = req.body.ownerPrivatekey
-
-  const safeAddress = req.body.safe_address
-
-  const to = req.body.to
-  const value = req.body.value
-  const data = req.body.data
-  const operation = req.body.operation
-  const safeTxGas = req.body.safeTxGas
-  const baseGas = req.body.baseGas
-  const gasPrice = req.body.gasPrice
-  const gasToken = req.body.gasToken
-  const refundReceiver = req.body.refundReceiver
-  const signatures = req.body.signatures
-  const nonce = req.body.nonce
-
-
-  const domain = {
-    verifyingContract: safeAddress,
-  };
-
-  const eip712DomainType = [{
-      name: 'verifyingContract',
-      type: 'address'
-    }
-  ];
-  const encodedDomain = TypedDataUtils.encodeData(
-    'EIP712Domain',
-    domain, {
-      EIP712Domain: eip712DomainType
-    }
-  );
-  const hashedDomain = ethUtil.keccak256(encodedDomain);
-  const messageTypes = {
-    'SafeTx': [
-      {name: "to", type: "address"},
-      {name: "value", type: "uint256"},
-      {name: "data", type: "bytes"},
-      {name: "operation", type: "uint8"},
-      {name: "safeTxGas", type: "uint256"},
-      {name: "baseGas", type: "uint256"},
-      {name: "gasPrice", type: "uint256"},
-      {name: "gasToken", type: "address"},
-      {name: "refundReceiver", type: "address"},
-      {name: "nonce", type: "uint256"},
-    ]
-  }
-  const encodedMessage = TypedDataUtils.encodeData(
-    'SafeTx',
-    {to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, nonce},
-    messageTypes,
-  );
-
-  const hashedMessage = ethUtil.keccak256(encodedMessage);
-
-  const hash = ethUtil.keccak256(
-    Buffer.concat([
-      Buffer.from('1901', 'hex'),
-      hashedDomain,
-      hashedMessage,
-    ])
-  );
-
-  const sig = await ethUtil.ecsign(hash, Buffer.from(privateKey.substring(2), 'hex'));
-  const signature = ethUtil.toRpcSig(sig.v, sig.r, sig.s);
-  const execTransactionData = web3.eth.abi.encodeFunctionCall({
-    name: 'execTransaction',
-    type: 'function',
-    inputs: [
-      {type: 'address',name: 'to'},
-      {type: 'uint256',name: 'value'},
-      {type: 'bytes',name: 'data'},
-      {type: 'uint8',name: 'operation'},
-      {type: 'uint256',name: 'safeTxGas'},
-      {type: 'uint256',name: 'baseGas'},
-      {type: 'uint256',name: 'gasPrice'},
-      {type: 'address',name: 'gasToken'},
-      {type: 'address',name: 'refundReceiver'},
-      {type: 'bytes',name: 'signatures'},]
-  }, [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, signature]);
-  res.status(200).json({
-    execTransactionData
-  })
-}
-
 async function forward(req, res) {
   const to = req.body.to
   const data = req.body.data
@@ -326,7 +240,6 @@ app.use(bodyParser.json())
 app.use(cors())
 
 app.post('/deploy', wrap(deployGnosisSafe))
-app.post('/prepare', wrap(prepareGnosisTransact))
 app.post('/forward', wrap(forward))
 app.get('/tx/:trackingId', wrap(getRocksideTx))
 

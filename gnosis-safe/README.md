@@ -25,7 +25,7 @@ You now you should be able to complete the env variables needed.
 ### Start the service
 
 ```
-node main.js
+node back.js
 ```
 
 ### Deploy a GnosisSafe for your user
@@ -71,14 +71,63 @@ Once your tx, is mined you should have something like that
 
 Take the last 40 character from the field data, that the deployed Gnosis Safe address (well not exactly, it's a proxy in reality but this doesn't change much and is way cheaper)
 
-### Prepare a gnosis transaction
+### Prepare the gnosis transaction
 
 The client will have to craft the transaction for the Gnosis Safe and sign it. You can help him with that but his privateKey should never be in your hand.
 
+First create the safe tx
+
 ```
-curl --request POST 'http://localhost:8000/deploy' \
-  --header 'Content-Type: application/json' \
-  --data '{
-  	"owner": CLIENT_ADDRESS
-  }'
+'{
+  "to": ...,
+  "value": ...,
+  "data": ...,
+  "operation": ...,
+  "safeTxGas": ...,
+  "baseGas": ...,
+  "gasPrice": ...,
+  "gasToken": ...,
+  "refundReceiver": ...,
+  "nonce": ...
+}'
 ```
+
+* `to`: destination of the transaction
+* `value`: value to transfer
+* `data`: data for the destination, for none set it to `0x`
+* `operation`: way of sending the tx: call (`0`) or delegateCall (`1`). In most cases use call and be very careful using delegateCall  
+* `safeTxGas`: gas for the internal transaction, can be set to `0` even with refund enable
+* `baseGas`: gas used by gnosis itself (sig check, nonce, ...)
+* `gasPrice`: max gas price used for the refund
+* `gasToken`: token address for the refund, for eth set it to zero address
+* `refundReceiver`: address which will receive the refund
+* `nonce`: nonce of the gnosis safe
+
+Then run
+
+```
+node front.js USER_PRIVATEKEY SAFE_ADDRESS SAFE_TX
+```
+
+This will return an hexa string which represent the signed safe tx
+
+### Forward the transaction
+
+Now, we can call the backend with this data
+
+```
+curl --request POST 'http://localhost:8000/forward' \
+--header 'Content-Type: application/json' \
+--data '{
+  "to": SAFE_ADDRESS,
+  "data": SIGNED_SAFE_TX
+}'
+```
+
+This will return a trackingId that you use as it follows
+
+```
+curl --request GET 'http://localhost:8000/tx/{TRACKING_ID}'
+```
+
+And it's done, you made a transaction for a Gnosis Safe Wallet through Rockside
