@@ -8,13 +8,21 @@ It's the perfect smart contract wallet for your client to manage their assets an
 
 The purpose of this repo is to provide a simple example on how to use GnosisSafe with Rockside.
 
+## Architecture
+
+An application running with GnosisSafe and Rockside will need two signatures and therefore two sets of keys. The user must have a third party wallet (Metamask, Ledger, ...).
+
+The first comes from the user, he will sign his transaction intention. Some of the transaction parameters have a minimum requirement defined by the application. The message and signature are then passed to the application backend. The second signature is done by the backend for Rockside forwarding mechanism.
+
+In this example, all actions concerning the user are in the `user.js` file and those for the backend of the application are in the` back.js` file.
+
 ## Process
 
 ### Configuration
 
 #### Gnosis Safe contracts
 
-First you need to find the addresses of the `GnosisSafeMasterCopy` and `GnosisSafeProxyFactory` deployed on your network. You can find the list of the supported network [here](https://github.com/gnosis/safe-contracts/tree/v1.1.1/.openzeppelin). If you don't find your network you can still deploy those two smart contract yourself.
+First you need to find the addresses of the `GnosisSafeMasterCopy` and `GnosisSafeProxyFactory` deployed on your network. You can find the list of the supported network [here](https://github.com/gnosis/safe-contracts/tree/v1.1.1/.openzeppelin). The default value used in this script are contract deployed by Rockside team on ropsten. If you don't find your network you can still [deploy those smart contracts yourself](https://github.com/gnosis/safe-contracts#deploy).
 
 #### Rockside
 
@@ -23,6 +31,8 @@ Then you need to create an admin key and deploy a forwarder for its address (doc
 You now you should be able to complete the env variables needed.
 
 ### Start the service
+
+Start the backend of the application
 
 ```
 node back.js
@@ -92,21 +102,23 @@ First create the safe tx
 }'
 ```
 
-* `to`: destination of the transaction
-* `value`: value to transfer
-* `data`: data for the destination, for none set it to `0x`
-* `operation`: way of sending the tx: call (`0`) or delegateCall (`1`). In most cases use call and be very careful using delegateCall  
-* `safeTxGas`: gas for the internal transaction, can be set to `0` even with refund enable
-* `baseGas`: gas used by gnosis itself (sig check, nonce, ...)
-* `gasPrice`: max gas price used for the refund
-* `gasToken`: token address for the refund, for eth set it to zero address
-* `refundReceiver`: address which will receive the refund
-* `nonce`: nonce of the gnosis safe
+* `to`: An Ethereum address the transaction is going to.
+* `value`: This is an amount in ether that can be set. It will be deducted from the Gnosis Safe and sent to the `to` address.
+* `data`: This is literally some data that is sent with the transaction. It can be the function that should be called on the smart contract specified by the `to` address.
+* `operation`: On Ethereum, there are different types of transactions. The Safe supports CALL (uint8 - `0`), DELEGATECALL (uint8 - `1`) and CREATE (uint8 - `2`).
+* `safeTxGas`: This is the minimum amount of gas that is provided for the Safe transaction. In case of CALL and DELEGATECALL this is also the maximum available gas (gas limit).
+* `baseGas`: This is the amount of gas that is independent of the specific Safe transactions, but used for general things such as signature checks and the base transaction fee. `safeTxGas` and `baseGas` combined are comparable to the gas limit of a regular transaction.
+* `gasPrice`: The gas price sets the exchange rate between gas and ether for the refund. Setting the gas price to 0 means that no refund is paid out.
+* `gasToken`: For regular Ethereum transactions, gas is paid in ether, always. The Gnosis Safe enables users to pay in ERC20 tokens or ether. The desired token is specified here. If 0x0 then Ether is used. Gas costs are calculated by `(dataGas + txGas) * gasPrice` and are deducted from the Gnosis Safe and sent to the `refundReceiver`.
+* `refundReceiver`: The refund does not necessarily have to go to the account submitting the transaction but can be paid out to any account specified here. If set to 0, tx.origin will be used. For transaction paid by your client with Rockside, you should put your forwarder address here.
+* `signatures`: All parameters are hashed and signed by all owners of the Gnosis Safe up to the specified threshold. A list of hex encoded signatures is expected (execTransaction expects that the signatures are sorted by owner address. This is required to easily validate no confirmation duplicates exist)
+
+For more details see [Gnosis documentation](https://docs.gnosis.io/safe/docs/contracts_tx_execution/)
 
 Then run
 
 ```
-node front.js USER_PRIVATEKEY SAFE_ADDRESS SAFE_TX
+node user.js USER_PRIVATEKEY SAFE_ADDRESS SAFE_TX
 ```
 
 This will return an hexa string which represent the signed safe tx
