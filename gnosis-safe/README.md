@@ -14,6 +14,8 @@ An application running with GnosisSafe and Rockside will need two signatures and
 
 The first comes from the user, he will sign his transaction intention. Some of the transaction parameters have a minimum requirement defined by the application. The message and signature are then passed to the application backend. The second signature is done by the backend for Rockside forwarding mechanism.
 
+![signatures](https://raw.githubusercontent.com/rocksideio/rockside-integration-examples/master/gnosis-safe/img/signatures.png)
+
 In this example, all actions concerning the user are in the `user.js` file and those for the backend of the application are in the` back.js` file.
 
 ## Process
