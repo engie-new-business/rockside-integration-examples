@@ -30,7 +30,7 @@ First you need to find the addresses of the `GnosisSafeMasterCopy` and `GnosisSa
 
 Then you need to create an admin key and deploy a forwarder for its address (doc [here](https://docs.rockside.io/rockside-api)).
 
-You now you should be able to complete the env variables needed.
+Now you should be able to complete the env variables needed.
 
 ### Start the service
 
