@@ -58,7 +58,7 @@ This will return a trackingId that you use as it follows
 curl --request GET 'http://localhost:8000/tx/{TRACKING_ID}'
 ```
 
-Once your tx, is mined you should have something like that
+Once your tx is mined, you should have something like that
 
 ```
 {
@@ -81,7 +81,7 @@ Once your tx, is mined you should have something like that
 }
 ```
 
-Take the last 40 character from the field data, that the deployed Gnosis Safe address (well not exactly, it's a proxy in reality but this doesn't change much and is way cheaper)
+Take the last 40 character from the field data, that's the deployed Gnosis Safe address (well not exactly, it's a proxy in reality but this doesn't change much and is way cheaper)
 
 ### Prepare the gnosis transaction
 
