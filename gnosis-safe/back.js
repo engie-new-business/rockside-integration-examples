@@ -78,7 +78,7 @@ async function deployGnosisSafe(req, res) {
   const {
     nonce,
     gas_prices: gasPrice
-  } = await fetchRelayParams(admin);
+  } = await fetchForwardParams(admin);
 
   const hash = hashRelayMessage(admin, gnosisSafeProxyFactory, dataForFactory, nonce);
   const signature = await sign(hash)
@@ -88,6 +88,7 @@ async function deployGnosisSafe(req, res) {
   })
 }
 
+// The dapp pay the gas
 async function forward(req, res) {
   const to = req.body.to
   const data = req.body.data
@@ -95,7 +96,7 @@ async function forward(req, res) {
   const {
     nonce,
     gas_prices: gasPrice
-  } = await fetchRelayParams(admin);
+  } = await fetchForwardParams(admin);
   const hash = hashRelayMessage(admin, to, data, nonce);
 
   const signature = await sign(hash)
@@ -103,6 +104,22 @@ async function forward(req, res) {
   res.status(200).json({
     trackingId
   })
+}
+
+// The user pay the gas
+async function relay(req, res) {
+  const to = req.body.to
+  const data = req.body.data
+  const speed = req.body.speed
+
+  const trackingId = await _relay(to, data, speed)
+  res.status(200).json({
+    trackingId
+  })
+}
+
+async function relayParams(req, res) {
+  res.json(await fetchRelayParams(req.params.gnosis))
 }
 
 async function getRocksideTx(req, res) {
@@ -199,13 +216,30 @@ async function _forward(signer, to, data, nonce, signature, gasPrice) {
   return response.tracking_id;
 }
 
+async function _relay(destination, data, speed) {
+  const requestBody = {
+    data: data,
+    speed: speed,
+  };
+
+  const response = await request({
+    method: 'POST',
+    uri: `${rocksideURL}/ethereum/${network}/relay/${destination}?apikey=${apikey}`,
+    method: 'POST',
+    body: requestBody,
+    json: true,
+  })
+
+  return response.tracking_id;
+}
+
 async function sign(hash) {
   const sig = await ethUtil.ecsign(hash, Buffer.from(adminPrivateKey.substring(2), 'hex'));
   const signature = ethUtil.toRpcSig(sig.v, sig.r, sig.s);
   return signature
 }
 
-async function fetchRelayParams(account) {
+async function fetchForwardParams(account) {
   const requestBody = {
     account,
     channel_id: '0'
@@ -215,6 +249,16 @@ async function fetchRelayParams(account) {
     uri: `${rocksideURL}/ethereum/${network}/forwarders/${forwarderAddress}/relayParams?apikey=${apikey}`,
     method: 'POST',
     body: requestBody,
+    json: true,
+  })
+
+  return response;
+}
+
+async function fetchRelayParams(gnosis) {
+  const response = await request({
+    uri: `${rocksideURL}/ethereum/${network}/relay/${gnosis}/params?apikey=${apikey}`,
+    method: 'GET',
     json: true,
   })
 
@@ -241,6 +285,8 @@ app.use(cors())
 
 app.post('/deploy', wrap(deployGnosisSafe))
 app.post('/forward', wrap(forward))
+app.post('/relay', wrap(relay))
+app.get('/relay/:gnosis/params', wrap(relayParams))
 app.get('/tx/:trackingId', wrap(getRocksideTx))
 
 app.set('trust proxy', true);

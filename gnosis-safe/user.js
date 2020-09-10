@@ -6,7 +6,6 @@ const ethUtil = require('ethereumjs-util');
 const Web3 = require('web3')
 const web3 = new Web3(Web3.givenProvider)
 
-
 const args = process.argv.slice(2);
 const privateKey = args[0]
 const safe_address = args[1]
