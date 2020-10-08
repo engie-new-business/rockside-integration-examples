@@ -9,7 +9,6 @@ const {
 const ethUtil = require('ethereumjs-util');
 const abi = require('ethereumjs-abi');
 const Web3 = require('web3')
-const web3 = new Web3(Web3.givenProvider)
 
 const port = process.env.PORT || '8000'
 
@@ -27,6 +26,8 @@ const forwarderAddress = process.env.FORWARDER
 const gnosisSafeProxyFactory = process.env.GNOSIS_SAFE_PROXY_FACTORY || "0x016457118b425fe86952381eC5127F28D4248984"
 const gnosisSafeMasterCopy = process.env.GNOSIS_SAFE_MASTERCOPY || "0xB6998f4E968573534D6ea6A500323B0d1cd03767"
 
+const rpc = process.env.RPC
+const web3 = new Web3(rpc)
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 async function deployGnosisSafe(req, res) {
@@ -61,6 +62,7 @@ async function deployGnosisSafe(req, res) {
     },]
   }, [[owner], 1, ZERO_ADDRESS, '0x', ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS]);
 
+  const salt = getRandomSalt();
   const dataForFactory = web3.eth.abi.encodeFunctionCall({
     name: 'createProxyWithNonce',
     type: 'function',
@@ -74,18 +76,27 @@ async function deployGnosisSafe(req, res) {
       type: 'uint256',
       name: 'saltNonce'
     }]
-  }, [gnosisSafeMasterCopy, initData, getRandomSalt()]);
+  }, [gnosisSafeMasterCopy, initData, salt]);
   const {
     nonce,
     gas_prices: gasPrice
   } = await fetchForwardParams(admin);
 
+  const proxyAddress = await getCreate2AddressWithBlockchainCall(gnosisSafeProxyFactory, dataForFactory)
   const hash = hashRelayMessage(admin, gnosisSafeProxyFactory, dataForFactory, nonce);
   const signature = await sign(hash)
   const trackingId = await _forward(admin, gnosisSafeProxyFactory, dataForFactory, nonce, signature, gasPrice)
   res.status(200).json({
-    trackingId
+    trackingId,
+    proxyAddress
   })
+}
+
+async function getCreate2AddressWithBlockchainCall(factory, dataForFactory) {
+  return '0x' + (await web3.eth.call({
+    'to': gnosisSafeProxyFactory,
+    'data': dataForFactory
+  })).slice(26)
 }
 
 // The dapp pay the gas
